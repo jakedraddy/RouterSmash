@@ -6,7 +6,7 @@ import struct
 
 
 class sendDNSpacket:
-    def __init__(self, url, ip, port=54):
+    def __init__(self, url, ip, port=53):
         self.url = url
         self.ip = ip
         self.port = port
