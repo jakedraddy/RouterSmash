@@ -51,7 +51,7 @@ if __name__ == '__main__':
     import sys
     target = None
     if len(sys.argv) == 1:
-        target = ('localhost', 80)
+        target = ('10.0.0.1', 80)
     elif len(sys.argv) == 3:
         import urlparse
 #        target = 
