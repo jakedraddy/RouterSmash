@@ -13,7 +13,7 @@ DELAY = 5
 # and add a line like vita soft nofile 2000
 # and vita hard nofile 40000
 # You can check the status of these limits with ulimit -Hn and ulimit -Sn
-CONCURRENT_REQUESTS = 1000 
+CONCURRENT_REQUESTS = 1000
 
 def fl():
     sys.stdout.flush()
@@ -51,7 +51,7 @@ if __name__ == '__main__':
     import sys
     target = None
     if len(sys.argv) == 1:
-        target = ('10.0.0.1', 80)
+        target = ('10.0.0.7', 80)
     elif len(sys.argv) == 3:
         import urlparse
 #        target = 
